@@ -1,6 +1,10 @@
+#![crate_name = "ripgross"]
+#![crate_type = "rlib"]
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
+
+pub mod Style;
 
 #[cfg(test)]
 mod tests {
