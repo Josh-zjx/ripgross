@@ -6,13 +6,13 @@ use std::collections::{HashMap, HashSet};
 pub struct Style {
     decorator_dict: HashSet<Decorator>,
     decorated_space: bool,
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
     horizontal_alignment: Alignment,
     background_color: Option<Color>,
     foreground_color: Option<Color>,
-    layout_dict: HashMap<Layout, u32>,
-    //_border_dict: HashMap<Border, i32>,
+    layout_dict: HashMap<Layout, usize>,
+    border_dict: HashSet<Border>,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -33,32 +33,31 @@ enum Alignment {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Layout {
-    //MarginTop,
-    //MarginLeft,
-    //MarginBottom,
-    //MarginRight,
+    MarginTop,
+    MarginLeft,
+    MarginBottom,
+    MarginRight,
     PaddingTop,
     PaddingLeft,
     PaddingBottom,
     PaddingRight,
 }
-/*
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Border {
-    borderStyleKey,
-    borderTopKey,
-    borderRightKey,
-    borderBottomKey,
-    borderLeftKey,
-    borderTopForegroundKey,
-    borderRightForegroundKey,
-    borderBottomForegroundKey,
-    borderLeftForegroundKey,
-    borderTopBackgroundKey,
-    borderRightBackgroundKey,
-    borderBottomBackgroundKey,
-    borderLeftBackgroundKey,
+    //BorderStyle,
+    BorderTop,
+    BorderRight,
+    BorderBottom,
+    BorderLeft,
+    //BorderTopForeground,
+    //BorderRightForeground,
+    //BorderBottomForeground,
+    //BorderLeftForeground,
+    //BorderTopBackground,
+    //BorderRightBackground,
+    //BorderBottomBackground,
+    //BorderLeftBackground,
 }
-    */
 
 /// Create a new Style object
 ///
@@ -66,6 +65,7 @@ enum Border {
 pub fn new() -> Style {
     return Style {
         decorator_dict: HashSet::new(),
+        border_dict: HashSet::new(),
         decorated_space: true,
         width: 80,
         height: 24,
@@ -97,38 +97,132 @@ impl Style {
     ///
     /// ```
     pub fn render(&mut self, raw_string: &str) -> String {
-        let mut content = raw_string.to_string();
-        content = self.apply_text_wrap(content);
-        content = self.apply_text_style(content);
-        content = self.apply_layout_style(content);
+        let content = raw_string.to_string();
+        let mut wrapped_strings = self.text_wrap(content);
+        for i in wrapped_strings.iter_mut() {
+            let text_length = i.chars().count();
+            let decorated_line = self.line_text_decoration(i.clone());
+            *i = self.line_layout(decorated_line, text_length);
+        }
+        if self.layout_dict.contains_key(&Layout::PaddingTop) {
+            wrapped_strings = self.pad_top(
+                wrapped_strings,
+                self.layout_dict.get(&Layout::PaddingTop).unwrap(),
+            );
+        }
+        if self.layout_dict.contains_key(&Layout::PaddingBottom) {
+            wrapped_strings = self.pad_bottom(
+                wrapped_strings,
+                self.layout_dict.get(&Layout::PaddingBottom).unwrap(),
+            );
+        }
+        wrapped_strings = self.draw_border(wrapped_strings);
+        wrapped_strings = self.draw_margin(wrapped_strings);
+
+        // Finalize output
+        let mut content = String::new();
+        for i in wrapped_strings {
+            content.push_str(i.as_str());
+            content.push('\n');
+        }
         return content;
     }
 
+    fn draw_margin(&self, mut raw_content: Vec<String>) -> Vec<String> {
+        match self.layout_dict.get(&Layout::MarginLeft) {
+            Some(size) => {
+                for i in raw_content.iter_mut() {
+                    *i = self.pad_left(i.clone(), size);
+                }
+            }
+            None => (),
+        };
+        match self.layout_dict.get(&Layout::MarginTop) {
+            Some(size) => {
+                for i in raw_content.iter_mut() {
+                    *i = self.pad_right(i.clone(), size);
+                }
+            }
+            None => (),
+        };
+        match self.layout_dict.get(&Layout::MarginTop) {
+            Some(size) => {
+                raw_content = self.pad_top(raw_content, size);
+            }
+            None => (),
+        };
+        match self.layout_dict.get(&Layout::MarginBottom) {
+            Some(size) => {
+                raw_content = self.pad_bottom(raw_content, size);
+            }
+            None => (),
+        };
+        return raw_content;
+    }
+    fn draw_border(&self, mut raw_content: Vec<String>) -> Vec<String> {
+        let top_left = self.border_dict.contains(&Border::BorderLeft)
+            && self.border_dict.contains(&Border::BorderTop);
+        let top_right = self.border_dict.contains(&Border::BorderRight)
+            && self.border_dict.contains(&Border::BorderTop);
+        let bottom_left = self.border_dict.contains(&Border::BorderLeft)
+            && self.border_dict.contains(&Border::BorderBottom);
+        let bottom_right = self.border_dict.contains(&Border::BorderRight)
+            && self.border_dict.contains(&Border::BorderBottom);
+        for i in raw_content.iter_mut() {
+            if self.border_dict.contains(&Border::BorderLeft) {
+                i.insert(0, '│');
+            }
+            if self.border_dict.contains(&Border::BorderRight) {
+                i.push('│');
+            }
+        }
+        if self.border_dict.contains(&Border::BorderTop) {
+            let mut borderline = "─".repeat(self.width);
+            if top_left {
+                borderline.insert(0, '┌');
+            }
+            if top_right {
+                borderline.push('┐');
+            }
+            raw_content.insert(0, borderline);
+        }
+        if self.border_dict.contains(&Border::BorderBottom) {
+            let mut borderline = "─".repeat(self.width);
+            if bottom_left {
+                borderline.insert(0, '└');
+            }
+            if bottom_right {
+                borderline.push('┘');
+            }
+            raw_content.push(borderline);
+        }
+        return raw_content;
+    }
     /// Apply text wrap
     /// Would panic if valid text length is negative
-    fn apply_text_wrap(&self, raw_content: String) -> String {
+    fn text_wrap(&self, raw_content: String) -> Vec<String> {
         let left_pad = match self.layout_dict.get(&Layout::PaddingLeft) {
             Some(pad) => pad.to_owned(),
-            None => 0 as u32,
+            None => 0 as usize,
         };
         let right_pad = match self.layout_dict.get(&Layout::PaddingRight) {
             Some(pad) => pad.to_owned(),
-            None => 0 as u32,
+            None => 0 as usize,
         };
         assert!(self.width > left_pad + right_pad);
-        let wrap_length = (self.width - left_pad - right_pad) as usize;
-        let mut new_string = String::new();
+        let wrap_length = (self.width - left_pad - right_pad - 1) as usize;
+        let mut new_wrapped_strings: Vec<String> = Vec::new();
         for i in raw_content.split("\n") {
             let mut to_wrap = i.to_owned();
             while to_wrap.chars().count() > wrap_length {
                 let next = to_wrap.split_off(wrap_length);
-                to_wrap.push('\n');
-                new_string.push_str(&to_wrap);
+                new_wrapped_strings.push(to_wrap.clone());
                 to_wrap = next;
             }
+            new_wrapped_strings.push(to_wrap);
         }
 
-        return raw_content;
+        return new_wrapped_strings;
     }
 
     /// Apply Layout Decoration with following order:
@@ -136,7 +230,7 @@ impl Style {
     /// Alignment
     /// Border
     /// Margin
-    fn apply_layout_style(&self, mut raw_content: String) -> String {
+    fn line_layout(&self, mut raw_content: String, text_length: usize) -> String {
         if !self.layout_dict.is_empty() {
             // Add Padding
             if self.layout_dict.contains_key(&Layout::PaddingLeft) {
@@ -151,19 +245,17 @@ impl Style {
                     self.layout_dict.get(&Layout::PaddingRight).unwrap(),
                 );
             }
-            raw_content = self.align_horizontal(raw_content, &self.horizontal_alignment);
-            if self.layout_dict.contains_key(&Layout::PaddingTop) {
-                raw_content = self.pad_top(
-                    raw_content,
-                    self.layout_dict.get(&Layout::PaddingTop).unwrap(),
-                );
-            }
-            if self.layout_dict.contains_key(&Layout::PaddingBottom) {
-                raw_content = self.pad_bottom(
-                    raw_content,
-                    self.layout_dict.get(&Layout::PaddingBottom).unwrap(),
-                );
-            }
+            let line_length = text_length
+                + match self.layout_dict.get(&Layout::PaddingLeft) {
+                    Some(i) => *i as usize,
+                    None => 0 as usize,
+                }
+                + match self.layout_dict.get(&Layout::PaddingRight) {
+                    Some(i) => *i as usize,
+                    None => 0 as usize,
+                };
+            raw_content =
+                self.align_horizontal(raw_content, &self.horizontal_alignment, line_length);
         }
 
         return raw_content;
@@ -171,114 +263,108 @@ impl Style {
 
     /// Apply inline text decoration
     /// Mark decorated_space = true if you want space decorated
-    fn apply_text_style(&self, raw_content: String) -> String {
+    fn line_text_decoration(&self, raw_content: String) -> String {
         let mut handler = nu_ansi_term::Style::new();
         handler.background = self.background_color;
         handler.foreground = self.foreground_color;
 
-        if self.decorated_space {
-            for x in self.decorator_dict.iter() {
-                match x {
-                    Decorator::Bold => {
-                        handler = handler.bold();
-                    }
-                    Decorator::Italic => {
-                        handler = handler.italic();
-                    }
-                    Decorator::Underline => {
-                        handler = handler.underline();
-                    }
-                    Decorator::Strikethrough => {
-                        handler = handler.strikethrough();
-                    }
-                    Decorator::Blink => {
-                        handler = handler.blink();
-                    }
-                    Decorator::Reverse => {
-                        handler = handler.reverse();
-                    }
+        for x in self.decorator_dict.iter() {
+            match x {
+                Decorator::Bold => {
+                    handler = handler.bold();
+                }
+                Decorator::Italic => {
+                    handler = handler.italic();
+                }
+                Decorator::Underline => {
+                    handler = handler.underline();
+                }
+                Decorator::Strikethrough => {
+                    handler = handler.strikethrough();
+                }
+                Decorator::Blink => {
+                    handler = handler.blink();
+                }
+                Decorator::Reverse => {
+                    handler = handler.reverse();
                 }
             }
-            let result = handler.paint(raw_content).to_string();
-            return result;
+        }
+        let mut result = String::new();
+        if !self.decorated_space {
+            for word in raw_content.split(" ") {
+                result.push_str(handler.paint(word).to_string().as_str());
+                result.push_str(" ")
+            }
+            result.pop();
+        } else {
+            result = handler.paint(raw_content).to_string();
+        }
+        return result;
+    }
+    fn pad_top(&self, mut raw_content: Vec<String>, size: &usize) -> Vec<String> {
+        let pad = " ".repeat(self.width);
+        for _ in 0..*size {
+            raw_content.insert(0, pad.clone());
         }
         return raw_content;
     }
-    fn pad_top(&self, raw_content: String, size: &u32) -> String {
-        let mut padding_string = "\n".repeat(*size as usize);
+    fn pad_bottom(&self, mut raw_content: Vec<String>, size: &usize) -> Vec<String> {
+        let pad = " ".repeat(self.width);
+        for _ in 0..*size {
+            raw_content.push(pad.clone())
+        }
+        return raw_content;
+    }
+    fn pad_left(&self, raw_content: String, size: &usize) -> String {
+        let mut padding_string = " ".repeat(*size as usize);
         padding_string.push_str(&raw_content);
-
         return padding_string;
     }
-    fn pad_bottom(&self, mut raw_content: String, size: &u32) -> String {
-        let padding_string = "\n".repeat(*size as usize);
+    fn pad_right(&self, mut raw_content: String, size: &usize) -> String {
+        let padding_string = " ".repeat(*size as usize);
         raw_content.push_str(&padding_string);
         return raw_content;
     }
-    fn pad_left(&self, raw_content: String, size: &u32) -> String {
-        let padding_string = " ".repeat(*size as usize);
-        let mut new_string = String::new();
-        for i in raw_content.split("\n") {
-            new_string.push_str(&padding_string);
-            new_string.push_str(i);
-            new_string.push('\n');
-        }
-        return new_string;
-    }
-    fn pad_right(&self, raw_content: String, size: &u32) -> String {
-        let padding_string = " ".repeat(*size as usize);
-        let mut new_string = String::new();
-        for i in raw_content.split("\n") {
-            new_string.push_str(i);
-            new_string.push_str(&padding_string);
-            new_string.push('\n');
-        }
-        return new_string;
-    }
-    fn align_horizontal(&self, raw_content: String, alignment: &Alignment) -> String {
+    fn align_horizontal(
+        &self,
+        raw_content: String,
+        alignment: &Alignment,
+        text_length: usize,
+    ) -> String {
         let mut new_string = String::new();
         match *alignment {
             Alignment::Start => {
-                for i in raw_content.split("\n") {
-                    new_string.push_str(i);
-                    let pad = self.width as usize - i.chars().count();
-                    if pad > 0 {
-                        let padding_string = " ".repeat(pad);
-                        new_string.push_str(&padding_string);
-                    }
-                    new_string.push('\n');
+                new_string.push_str(raw_content.as_str());
+                let pad = self.width - text_length;
+                if pad > 0 {
+                    let padding_string = " ".repeat(pad);
+                    new_string.push_str(&padding_string);
                 }
             }
             Alignment::End => {
-                for i in raw_content.split("\n") {
-                    let pad = self.width as usize - i.chars().count();
-                    if pad > 0 {
-                        let padding_string = " ".repeat(pad);
-                        new_string.push_str(&padding_string);
-                    }
-                    new_string.push_str(i);
-                    new_string.push('\n');
+                let pad = self.width - text_length;
+                if pad > 0 {
+                    let padding_string = " ".repeat(pad);
+                    new_string.push_str(&padding_string);
                 }
+                new_string.push_str(raw_content.as_str());
             }
             Alignment::Center => {
-                for i in raw_content.split("\n") {
-                    let double_pad = self.width as usize - i.chars().count();
-                    let pad = double_pad / 2;
-                    if double_pad > 0 {
-                        let padding_string = " ".repeat(pad);
-                        new_string.push_str(&padding_string);
-                        new_string.push_str(i);
-                        let padding_string = " ".repeat(double_pad - pad);
-                        new_string.push_str(&padding_string);
-                        new_string.push('\n');
-                    } else {
-                        new_string.push_str(i);
-                        new_string.push('\n');
-                    }
+                let double_pad = self.width - text_length;
+                let pad = double_pad / 2;
+                if double_pad > 0 {
+                    let padding_string = " ".repeat(pad);
+                    new_string.push_str(&padding_string);
+                    new_string.push_str(raw_content.as_str());
+                    let padding_string = " ".repeat(double_pad - pad);
+                    new_string.push_str(&padding_string);
+                } else {
+                    new_string.push_str(raw_content.as_str());
                 }
             }
         }
-        return raw_content;
+        return new_string;
     }
 }
 pub mod getter;

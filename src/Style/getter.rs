@@ -1,10 +1,10 @@
 use super::*;
 
 impl Style {
-    pub fn get_width(&self) -> u32 {
+    pub fn get_width(&self) -> usize {
         return self.width;
     }
-    pub fn get_height(&self) -> u32 {
+    pub fn get_height(&self) -> usize {
         return self.height;
     }
     pub fn is_bold(&self) -> bool {

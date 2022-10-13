@@ -2,33 +2,33 @@ use super::*;
 impl Style {
     /// Set text block width
     /// This is the width where border would be drawed
-    pub fn set_width(mut self, size: u32) -> Self {
+    pub fn set_width(mut self, size: usize) -> Self {
         self.width = size;
         return self;
     }
     /// Set text block height
     /// This is the height where border would be drawed
-    pub fn set_height(mut self, size: u32) -> Self {
+    pub fn set_height(mut self, size: usize) -> Self {
         self.height = size;
         return self;
     }
     /// Set top padding inside text block
-    pub fn padding_top(mut self, size: u32) -> Self {
+    pub fn padding_top(mut self, size: usize) -> Self {
         self.layout_dict.insert(Layout::PaddingTop, size);
         return self;
     }
     /// Set bottom padding inside text block
-    pub fn padding_bottom(mut self, size: u32) -> Self {
+    pub fn padding_bottom(mut self, size: usize) -> Self {
         self.layout_dict.insert(Layout::PaddingBottom, size);
         return self;
     }
     /// Set left padding inside text block
-    pub fn padding_left(mut self, size: u32) -> Self {
+    pub fn padding_left(mut self, size: usize) -> Self {
         self.layout_dict.insert(Layout::PaddingLeft, size);
         return self;
     }
     /// Set right padding inside text block
-    pub fn padding_right(mut self, size: u32) -> Self {
+    pub fn padding_right(mut self, size: usize) -> Self {
         self.layout_dict.insert(Layout::PaddingRight, size);
         return self;
     }
@@ -93,6 +93,53 @@ impl Style {
     /// Set text alignment to END
     pub fn align_end(mut self) -> Self {
         self.horizontal_alignment = Alignment::End;
+        return self;
+    }
+    /// Set decorated_space = false
+    ///
+    /// ### This would aggregate space between words !
+    pub fn ignore_space(mut self) -> Self {
+        self.decorated_space = false;
+        return self;
+    }
+    /// Set left border
+    pub fn border_left(mut self) -> Self {
+        self.border_dict.insert(Border::BorderLeft);
+        return self;
+    }
+    /// Set right border
+    pub fn border_right(mut self) -> Self {
+        self.border_dict.insert(Border::BorderRight);
+        return self;
+    }
+    /// Set top border
+    pub fn border_top(mut self) -> Self {
+        self.border_dict.insert(Border::BorderTop);
+        return self;
+    }
+    /// Set bottom border
+    pub fn border_bottom(mut self) -> Self {
+        self.border_dict.insert(Border::BorderBottom);
+        return self;
+    }
+    /// Set top padding inside text block
+    pub fn margin_top(mut self, size: usize) -> Self {
+        self.layout_dict.insert(Layout::MarginTop, size);
+        return self;
+    }
+    /// Set bottom padding inside text block
+    pub fn margin_bottom(mut self, size: usize) -> Self {
+        self.layout_dict.insert(Layout::MarginBottom, size);
+        return self;
+    }
+    /// Set left padding inside text block
+    pub fn margin_left(mut self, size: usize) -> Self {
+        self.layout_dict.insert(Layout::MarginLeft, size);
+        return self;
+    }
+    /// Set right padding inside text block
+    pub fn margin_right(mut self, size: usize) -> Self {
+        self.layout_dict.insert(Layout::MarginRight, size);
         return self;
     }
 }
