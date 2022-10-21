@@ -85,18 +85,47 @@ impl StyleBlock {
     pub fn join_right(mut self, mut target: StyleBlock) -> StyleBlock {
         self.render_paragraph();
         target.render_paragraph();
-        if self.height == target.height {
-            for i in 0..self.height {
-                self.content[i].push_str(target.content[i].as_str());
+        let new_height = if self.height > target.height {
+            self.height
+        } else {
+            target.height
+        };
+        for i in 0..new_height {
+            if i >= self.height {
+                let padding_string = " ".repeat(self.width);
+                self.content.push(padding_string);
             }
-            self.width += target.width;
+            if i >= target.height {
+                let padding_string = " ".repeat(target.width);
+                target.content.push(padding_string);
+            }
         }
+        for i in 0..new_height {
+            self.content[i].push_str(target.content[i].as_str());
+        }
+        self.width += target.width;
+        self.height = new_height;
         return self;
     }
     /// Put Target Block to the bottom of self
     pub fn join_bottom(mut self, mut target: StyleBlock) -> StyleBlock {
         self.render_paragraph();
         target.render_paragraph();
+        if self.width > target.width {
+            let width_difference = self.width - target.width;
+            let padding_string = " ".repeat(width_difference);
+            for i in 0..target.height {
+                target.content[i].push_str(padding_string.clone().as_str());
+            }
+        } else {
+            let width_difference = target.width - self.width;
+            let padding_string = " ".repeat(width_difference);
+            for i in 0..target.height {
+                target.content[i].push_str(padding_string.clone().as_str());
+            }
+            self.width = target.width;
+        };
+
         self.content.append(&mut target.content);
         self.height += target.height;
         return self;
@@ -128,10 +157,11 @@ impl StyleBlock {
         }
         self.content = self.text_wrap();
         for i in 0..self.content.len() {
-            let text_length = self.content[i].chars().count();
+            let text_length = dbg!(self.content[i].chars().count());
             let decorated_line = self.style.line_text_decoration(self.content[i].clone());
             self.content[i] = self.line_layout(decorated_line, text_length);
         }
+        self.height = self.content.len();
         self.paragraph_fixed = true;
     }
     fn draw_margin(&mut self) {
@@ -214,7 +244,7 @@ impl StyleBlock {
             None => 0 as usize,
         };
         assert!(self.width > left_pad + right_pad);
-        let wrap_length = (self.width - left_pad - right_pad - 1) as usize;
+        let wrap_length = (self.width - left_pad - right_pad) as usize;
         let mut new_wrapped_strings: Vec<String> = Vec::new();
         for i in self.raw_string.split("\n") {
             let mut to_wrap = i.to_owned();
@@ -229,32 +259,30 @@ impl StyleBlock {
         return new_wrapped_strings;
     }
     fn line_layout(&self, mut raw_content: String, text_length: usize) -> String {
-        if !self.layout_dict.is_empty() {
-            // Add Padding
-            if self.layout_dict.contains_key(&Layout::PaddingLeft) {
-                raw_content = Self::pad_left(
-                    raw_content,
-                    self.layout_dict.get(&Layout::PaddingLeft).unwrap(),
-                );
-            }
-            if self.layout_dict.contains_key(&Layout::PaddingRight) {
-                raw_content = Self::pad_right(
-                    raw_content,
-                    self.layout_dict.get(&Layout::PaddingRight).unwrap(),
-                );
-            }
-            let line_length = text_length
-                + match self.layout_dict.get(&Layout::PaddingLeft) {
-                    Some(i) => *i as usize,
-                    None => 0 as usize,
-                }
-                + match self.layout_dict.get(&Layout::PaddingRight) {
-                    Some(i) => *i as usize,
-                    None => 0 as usize,
-                };
-            raw_content =
-                self.align_horizontal(raw_content, &self.horizontal_alignment, line_length);
+        // Add Padding
+        if self.layout_dict.contains_key(&Layout::PaddingLeft) {
+            raw_content = Self::pad_left(
+                raw_content,
+                self.layout_dict.get(&Layout::PaddingLeft).unwrap(),
+            );
         }
+        if self.layout_dict.contains_key(&Layout::PaddingRight) {
+            raw_content = Self::pad_right(
+                raw_content,
+                self.layout_dict.get(&Layout::PaddingRight).unwrap(),
+            );
+        }
+        let line_length = text_length
+            + match self.layout_dict.get(&Layout::PaddingLeft) {
+                Some(i) => *i as usize,
+                None => 0 as usize,
+            }
+            + match self.layout_dict.get(&Layout::PaddingRight) {
+                Some(i) => *i as usize,
+                None => 0 as usize,
+            };
+        raw_content =
+            self.align_horizontal(raw_content, &self.horizontal_alignment, dbg!(line_length));
 
         return raw_content;
     }
@@ -292,7 +320,7 @@ impl StyleBlock {
                 new_string.push_str(raw_content.as_str());
                 let pad = self.width - text_length;
                 if pad > 0 {
-                    let padding_string = " ".repeat(pad);
+                    let padding_string = " ".repeat(dbg!(pad));
                     new_string.push_str(&padding_string);
                 }
             }

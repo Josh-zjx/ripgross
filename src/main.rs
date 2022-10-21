@@ -22,7 +22,7 @@ fn test2() {
 fn test1() {
     println!(
         "{}",
-        dbg!(Style::new()
+        Style::new()
             .ignore_space()
             .italic()
             .strikethrough()
@@ -32,6 +32,7 @@ fn test1() {
         .render_to_block("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ac lectus non magna aliquam aliquet. Sed mattis est convallis commodo finibus. Pellentesque orci justo, dictum eget justo nec, condimentum porttitor tellus. Morbi suscipit sodales accumsan. Cras blandit, ligula ut efficitur luctus, enim est pretium mauris, et sagittis dolor magna quis augue. Nunc dictum imperdiet tortor, ac feugiat diam viverra et. Aenean pharetra, mi in congue maximus, ipsum justo ornare arcu, a ultrices enim erat eu eros. Donec sit amet laoreet arcu, tempor ultrices ante. Donec semper mi eu nisi ullamcorper, a consectetur ex ullamcorper. Fusce imperdiet libero malesuada, vestibulum erat consectetur, dignissim dolor. Cras sit amet lacus ex.
 
 Sed est ex, volutpat id sapien sed, pretium ornare tellus. Quisque laoreet, nulla non bibendum eleifend, ex augue ultrices nibh, eget commodo risus orci non enim. Maecenas congue nec velit nec cursus. Donec a dapibus est. Praesent tristique dui id orci convallis bibendum. Donec dolor erat, tempor sed dolor eget, ultrices eleifend felis. Duis a magna aliquet, pharetra tellus eu, tincidunt orci.")
+            .set_width(40)
             .padding_top(4)
             .padding_left(8)
             .padding_right(8)
@@ -43,8 +44,8 @@ Sed est ex, volutpat id sapien sed, pretium ornare tellus. Quisque laoreet, null
             .border_top()
             .border_right()
             .border_bottom()
-            .align_end())
-                .join_bottom(Style::new()
+            .align_end()
+                .join_right(Style::new()
             .underline()
                 .bold()
             .foreground_rgb(181, 105, 51)
@@ -62,7 +63,16 @@ Phasellus fringilla bibendum condimentum. Cras eros quam, viverra nec finibus ac
             .border_top()
             .border_left()
             .border_bottom()
-            .align_start())
+            .align_start()
+                .join_bottom(
+                    Style::new()
+                    .underline()
+                    .bold()
+                    .strikethrough()
+                    .render_to_block("She literature discovered increasing how diminution understood. Though and highly the enough county for man. Of it up he still court alone widow seems. Suspected he remainder rapturous my sweetness. All vanity regard sudden nor simple can. World mrs and vexed china since after often.")
+            .align_end()
+                )
+            )
             .finalize()
     );
 }
