@@ -1,12 +1,14 @@
 use super::*;
-
-impl Style {
+impl StyleBlock {
     pub fn get_width(&self) -> usize {
         return self.width;
     }
     pub fn get_height(&self) -> usize {
         return self.height;
     }
+}
+
+impl Style {
     pub fn is_bold(&self) -> bool {
         return self.decorator_dict.contains(&Decorator::Bold);
     }
